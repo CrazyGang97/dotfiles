@@ -1,0 +1,70 @@
+#!/bin/sh
+#
+# dot
+#
+# `dot` handles installation, updates, things like that. Run it periodically
+# to make sure you're on the latest and greatest.
+
+set -e
+
+# parentDirectory是脚本所在目录的父目录的绝对路径
+# dotfilesDirectory是parentDirectory的父目录的绝对路径，假定此目录是存放dotfiles的位置。
+parentDirectory="$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd -P)"
+dotfilesDirectory="$(cd "$( dirname "$parentDirectory" )" && pwd -P)"
+
+# 用来显示脚本的使用方法并且退出。这在用户需要帮助时非常有用。
+displayUsageAndExit() {
+	echo "dot -- dotfiles management"
+	echo ""
+	echo "Usage: dot [options]"
+	echo ""
+	echo "Options:"
+	echo "  -e, --edit    Open dotfiles directory for editing"
+	echo "  -h, --help    Show this help message and exit"
+	exit
+}
+
+#这段代码是处理命令行参数的循环。使用case语句根据参数执行不同的操作，shift命令用于将参数向左移动。
+while test $# -gt 0; do
+	case "$1" in
+		"-h"|"--help")
+			displayUsageAndExit
+			;;
+		"-e"|"--edit")
+			exec "$EDITOR" "$dotfilesDirectory"
+			exit
+			;;
+		*)
+			echo "Invalid option: $1"
+			displayUsageAndExit
+			;;
+	esac
+	shift
+done
+
+# 设置环境变量ZSH为用户家目录下的.dotfiles，假定这是存放dotfiles的路径。
+export ZSH=$HOME/.dotfiles
+
+# 在ZSH目录下执行git pull命令，更新dotfiles。
+echo "› git pull"
+git -C $ZSH pull
+
+# Set macOS defaults
+$ZSH/macos/set-defaults.sh
+
+# Set macOS hostname
+$ZSH/macos/set-hostname.sh
+
+# Install homebrew
+$ZSH/homebrew/install.sh 2>&1
+
+# Upgrade homebrew
+echo "› brew update"
+brew update
+
+echo "› brew upgrade"
+brew upgrade
+
+# Install software
+echo "› script/install"
+$ZSH/script/install
